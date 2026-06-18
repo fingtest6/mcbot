@@ -1,7 +1,7 @@
 # 使用方法
 [下载authlib-injector](https://authlib-injector.yushi.moe/)
 
-[下载mcbot](https://github.com/fingtest6/mcbot/actions/runs/27740056332)
+[下载mcbot](https://github.com/fingtest6/mcbot/actions/runs/27740056332) 第一个mcbot-1
 
 放入同一文件夹
 
