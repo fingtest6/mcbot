@@ -1,0 +1,206 @@
+# .github/workflows/build.yml
+name: Build and Release MCBot
+
+on:
+  push:
+    branches: [ main, master ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+    inputs:
+      create_release:
+        description: '是否创建 Release'
+        type: boolean
+        default: false
+      release_name:
+        description: 'Release 名称 (留空使用自动生成)'
+        type: string
+        default: ''
+
+env:
+  # 构建输出名称
+  ARTIFACT_NAME: mcbot
+  # Java 版本
+  JAVA_VERSION: '21'
+
+jobs:
+  # ═══════════════════════════════════════════
+  # 构建 Job
+  # ═══════════════════════════════════════════
+  build:
+    name: 🔨 构建 MCBot
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 检出代码
+        uses: actions/checkout@v4
+
+      - name: ☕ 设置 Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: 🔧 添加执行权限
+        run: chmod +x gradlew
+
+      - name: 📦 构建 Fat Jar
+        run: ./gradlew clean fatJar --no-daemon --stacktrace
+
+      - name: 📋 检查构建产物
+        run: |
+          echo "════════════════════════════════"
+          echo "  构建产物列表"
+          echo "════════════════════════════════"
+          ls -lh build/libs/
+          echo ""
+          echo "════════════════════════════════"
+          echo "  Fat Jar 信息"
+          echo "════════════════════════════════"
+          FAT_JAR=$(ls build/libs/*-all.jar 2>/dev/null | head -1)
+          if [ -n "$FAT_JAR" ]; then
+            echo "文件: $FAT_JAR"
+            echo "大小: $(du -h "$FAT_JAR" | cut -f1)"
+            echo "MD5:  $(md5sum "$FAT_JAR" | cut -d' ' -f1)"
+            echo "SHA1: $(sha1sum "$FAT_JAR" | cut -d' ' -f1)"
+          else
+            echo "❌ 未找到 Fat Jar！"
+            ls -la build/libs/
+            exit 1
+          fi
+
+      - name: 📤 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}-${{ github.run_number }}
+          path: build/libs/*-all.jar
+          retention-days: 30
+          compression-level: 6
+
+      - name: 📤 上传构建产物 (latest)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}-latest
+          path: build/libs/*-all.jar
+          retention-days: 7
+          compression-level: 6
+
+  # ═══════════════════════════════════════════
+  # Release Job (标签推送或手动触发)
+  # ═══════════════════════════════════════════
+  release:
+    name: 🚀 创建 Release
+    needs: build
+    if: |
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
+      (github.event_name == 'workflow_dispatch' && inputs.create_release)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: 📥 下载构建产物
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}-${{ github.run_number }}
+
+      - name: 📋 列出文件
+        run: ls -lh
+
+      - name: 📝 生成 Release 信息
+        id: release_info
+        run: |
+          # 获取版本号
+          if [ "${{ github.event_name }}" = "push" ]; then
+            VERSION="${{ github.ref_name }}"
+          else
+            VERSION="${{ inputs.release_name }}"
+            if [ -z "$VERSION" ]; then
+              VERSION="build-${{ github.run_number }}"
+            fi
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          
+          # 获取 JAR 文件名
+          JAR_FILE=$(ls *-all.jar 2>/dev/null | head -1)
+          echo "jar_file=$JAR_FILE" >> $GITHUB_OUTPUT
+          echo "JAR: $JAR_FILE"
+
+      - name: 🚀 创建 Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: MCBot ${{ steps.release_info.outputs.version }}
+          tag_name: ${{ github.ref_name }}
+          body: |
+            ## 🎮 MCBot ${{ steps.release_info.outputs.version }}
+            
+            > 基于 MCPL 协议库的 Minecraft 机器人
+            
+            ### ✨ 功能特性
+            
+            | 功能 | 状态 |
+            |------|------|
+            | Yggdrasil 在线认证 | ✅ |
+            | 离线模式 | ✅ |
+            | 自动配置阶段 | ✅ |
+            | 心跳自动响应 | ✅ |
+            | 保活线程 | ✅ |
+            | 死亡自动重生 | ✅ |
+            | 聊天消息显示 | ✅ |
+            | 控制台命令 | ✅ |
+            | 自动重连 | ✅ |
+            | 多角色选择 | ✅ |
+            
+            ### 📦 下载
+            
+            \`\`\`bash
+            # 下载 JAR
+            wget ${{ github.server_url }}/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ steps.release_info.outputs.jar_file }}
+            \`\`\`
+            
+            ### 🚀 使用方法
+            
+            **在线模式：**
+            \`\`\`bash
+            java -javaagent:authlib-injector.jar=https://littleskin.cn/api/yggdrasil -jar mcbot.jar
+            \`\`\`
+            
+            **离线模式：**
+            \`\`\`bash
+            # 在 config.properties 中设置 mc.auth-mode=offline
+            java -jar mcbot.jar
+            \`\`\`
+            
+            ### ⚙️ 配置文件
+            
+            首次运行会自动生成 `config.properties`，支持交互式配置。
+            
+            ### 🔧 构建信息
+            
+            - 构建编号: #${{ github.run_number }}
+            - 提交: ${{ github.sha }}
+            - Java: ${{ env.JAVA_VERSION }}
+          files: |
+            *-all.jar
+            *.jar
+          generate_release_notes: true
+          make_latest: true
+
+  # ═══════════════════════════════════════════
+  # 清理旧 Artifacts (可选)
+  # ═══════════════════════════════════════════
+  cleanup:
+    name: 🧹 清理旧构建
+    needs: [ build, release ]
+    if: always()
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 清理旧 Artifacts
+        uses: actions/delete-artifact@v1
+        with:
+          name: ${{ env.ARTIFACT_NAME }}-latest
+        continue-on-error: true

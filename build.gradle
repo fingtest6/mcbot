@@ -1,0 +1,46 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+group = 'com.example.mcbot'
+version = '1.0-SNAPSHOT'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+
+repositories {
+    mavenCentral()
+    maven {
+        name "opencollabRepositoryMavenReleases"
+        url "https://repo.opencollab.dev/maven-releases"
+    }
+}
+
+dependencies {
+
+    implementation "org.geysermc.mcprotocollib:protocol:1.21.11-1"
+
+    implementation 'org.slf4j:slf4j-simple:2.0.9'
+}
+
+application {
+    mainClass = 'McBot'
+}
+
+tasks.register('fatJar', Jar) {
+    archiveClassifier.set('all')
+    from sourceSets.main.output
+    dependsOn configurations.runtimeClasspath
+    from {
+        configurations.runtimeClasspath.findAll { it.name.endsWith('jar') }.collect { zipTree(it) }
+    }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    manifest {
+        attributes(
+                'Main-Class': 'McBot'
+        )
+    }
+}
