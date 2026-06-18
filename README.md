@@ -5,6 +5,10 @@
 
 放入同一文件夹
 
+解压mcbot-1.zip
+
+确认文件夹里有mcbot-1.0-SNAPSHOT-all.jar和authlib-injector-1.2.7.jar这两个文件
+
 在当前文件夹下输入命令启动
 
 ### cmd
