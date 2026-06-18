@@ -139,21 +139,6 @@ jobs:
             
             > 基于 MCPL 协议库的 Minecraft 机器人
             
-            ### ✨ 功能特性
-            
-            | 功能 | 状态 |
-            |------|------|
-            | Yggdrasil 在线认证 | ✅ |
-            | 离线模式 | ✅ |
-            | 自动配置阶段 | ✅ |
-            | 心跳自动响应 | ✅ |
-            | 保活线程 | ✅ |
-            | 死亡自动重生 | ✅ |
-            | 聊天消息显示 | ✅ |
-            | 控制台命令 | ✅ |
-            | 自动重连 | ✅ |
-            | 多角色选择 | ✅ |
-            
             ### 📦 下载
             
             \`\`\`bash
@@ -188,19 +173,3 @@ jobs:
             *.jar
           generate_release_notes: true
           make_latest: true
-
-  # ═══════════════════════════════════════════
-  # 清理旧 Artifacts (可选)
-  # ═══════════════════════════════════════════
-  cleanup:
-    name: 🧹 清理旧构建
-    needs: [ build, release ]
-    if: always()
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: 清理旧 Artifacts
-        uses: actions/delete-artifact@v1
-        with:
-          name: ${{ env.ARTIFACT_NAME }}-latest
-        continue-on-error: true
