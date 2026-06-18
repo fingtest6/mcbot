@@ -23,7 +23,7 @@ mcbot/
 
 ### 3. 启动
 
-**在线模式（Yggdrasil / LittleSkin）：**
+**在线模式（Yggdrasil / LittleSkin示例）：**
 ```bash
 java -javaagent:authlib-injector-1.2.7.jar=https://littleskin.cn/api/yggdrasil -jar mcbot-1.0-SNAPSHOT-all.jar
 ```
